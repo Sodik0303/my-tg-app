@@ -4,49 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Семейный бот</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://telegram.org"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app">
         <!-- Шапка -->
         <header class="header">
-            <div class="header-title">Семейный бот</div>
-            <div class="header-subtitle">Вишлист и планы</div>
+            <div class="header-top">
+                <span class="badge">Для двоих ❤️</span>
+                <button id="share-btn" class="icon-btn" title="Отправить список в чат">📤 В чат</button>
+            </div>
+            <h1 class="header-title" id="greeting">Наш уголок 💕</h1>
+            <p class="header-subtitle">Общие желания, планы и идеи</p>
         </header>
 
-        <!-- Навигация -->
+        <!-- Навигация (3 вкладки) -->
         <nav class="tabs">
-            <button class="tab active" data-tab="wishlist">🎁 Вишлист</button>
-            <button class="tab" data-tab="plans">📅 Планы</button>
+            <button class="tab active" data-tab="wishes-tab">🎁 Вишлист</button>
+            <button class="tab" data-tab="plans-tab">📅 Планы</button>
+            <button class="tab" data-tab="ideas-tab">🎬 Идеи</button>
         </nav>
 
-        <!-- Контент -->
+        <!-- Основной контент -->
         <main class="content">
-            <!-- Вишлист -->
-            <section id="wishlist" class="tab-content active">
-                <div class="add-form">
-                    <input type="text" id="wish-input" placeholder="Добавить желание..." autocomplete="off">
-                    <button id="add-wish-btn">+</button>
+            <!-- Вкладка 1: Вишлист -->
+            <section id="wishes-tab" class="tab-content active">
+                <div class="stats-bar" id="wishes-stats">Всего: 0</div>
+                <div class="add-card-box">
+                    <input type="text" id="wish-input" placeholder="Что хочешь в подарок?">
+                    <div class="add-row">
+                        <input type="text" id="wish-meta" placeholder="Цена или ссылка (необязательно)">
+                        <button id="add-wish-btn" class="primary-btn">Добавить</button>
+                    </div>
                 </div>
-                <div id="wishes-list" class="cards-list">
-                    <!-- Карточки будут добавляться сюда -->
-                </div>
+                <div id="wishes-list" class="cards-list"></div>
             </section>
 
-            <!-- Планы -->
-            <section id="plans" class="tab-content">
-                <div class="add-form">
-                    <input type="text" id="plan-input" placeholder="Добавить план..." autocomplete="off">
-                    <button id="add-plan-btn">+</button>
+            <!-- Вкладка 2: Планы -->
+            <section id="plans-tab" class="tab-content">
+                <div class="stats-bar" id="plans-stats">Всего: 0</div>
+                <div class="add-card-box">
+                    <input type="text" id="plan-input" placeholder="Куда сходим или что сделаем?">
+                    <div class="add-row">
+                        <input type="text" id="plan-meta" placeholder="Когда? (например: в субботу)">
+                        <button id="add-plan-btn" class="primary-btn">Добавить</button>
+                    </div>
                 </div>
-                <div id="plans-list" class="cards-list">
-                    <!-- Карточки планов -->
+                <div id="plans-list" class="cards-list"></div>
+            </section>
+
+            <!-- Вкладка 3: Идеи и фильмы -->
+            <section id="ideas-tab" class="tab-content">
+                <div class="stats-bar">
+                    <span id="ideas-stats">Идей: 0</span>
+                    <button id="random-idea-btn" class="random-btn">🎲 Выбрать случайно</button>
                 </div>
+                <div class="add-card-box">
+                    <input type="text" id="idea-input" placeholder="Фильм на вечер, игра или место...">
+                    <div class="add-row">
+                        <select id="idea-category">
+                            <option value="🎬 Кино">🎬 Кино / Сериал</option>
+                            <option value="🍕 Еда">🍕 Поесть / Кафе</option>
+                            <option value="✨ Досуг">✨ Досуг / Свидание</option>
+                        </select>
+                        <button id="add-idea-btn" class="primary-btn">Добавить</button>
+                    </div>
+                </div>
+                <div id="ideas-list" class="cards-list"></div>
             </section>
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Модальное окно для случайной идеи -->
+    <div id="random-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-icon">🎲</div>
+            <h3>Сегодня выбираем:</h3>
+            <p id="random-result-text" class="random-result"></p>
+            <span id="random-result-cat" class="random-cat"></span>
+            <button id="close-modal-btn" class="primary-btn full-width">Отлично!</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
