@@ -190,4 +190,159 @@ function renderPlans() {
     list.innerHTML = plans.map((item, index) => {
         let timerHtml = '';
         if (item.extra && item.extra !== 'Без даты') {
-            const diff = new Date(item.extra) - new Date().setHours(0,0,0
+            const diff = new Date(item.extra) - new Date().setHours(0,0,0,0);
+            const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            if (!item.done) {
+                if (daysLeft === 0) timerHtml = `<div class="timer-badge">🔥 Это сегодня!</div>`;
+                else if (daysLeft === 1) timerHtml = `<div class="timer-badge">⏳ Завтра</div>`;
+                else if (daysLeft > 1) timerHtml = `<div class="timer-badge">⏳ Через ${daysLeft} дн.</div>`;
+            }
+        }
+        return `
+        <div class="card ${item.done ? 'done' : ''}">
+            <button class="card-check" onclick="toggleItem('plans', ${index})">${item.done ? '✓' : ''}</button>
+            <div class="card-body">
+                <div class="card-text">${escapeHtml(item.text)}</div>
+                ${item.extra && item.extra !== 'Без даты' ? `<div class="card-meta">📅 ${item.extra}</div>` : ''}
+                ${timerHtml}
+                <div class="card-meta">${escapeHtml(item.author)} • ${item.date}</div>
+            </div>
+            <button class="card-delete" onclick="deleteItem('plans', ${index})">×</button>
+        </div>
+        `;
+    }).join('');
+}
+
+function renderIdeas() {
+    const list = document.getElementById('ideas-list');
+    document.getElementById('ideas-stats').textContent = `Идей: ${ideas.length}`;
+
+    if (!ideas.length) {
+        list.innerHTML = `<div class="empty"><div class="empty-icon">🎬</div><div>Добавь фильм или идею.</div></div>`;
+        return;
+    }
+    
+    list.innerHTML = ideas.map((item, index) => {
+        const catClass = `cat-${item.extra}`;
+        return `
+        <div class="card ${item.done ? 'done' : ''} ${catClass}">
+            <button class="card-check" onclick="toggleItem('ideas', ${index})">${item.done ? '✓' : ''}</button>
+            <div class="card-body">
+                <div class="card-text">${escapeHtml(item.text)}</div>
+                <div class="card-extra">${getCatName(item.extra)}</div>
+                <div class="card-meta">${escapeHtml(item.author)} • ${item.date}</div>
+            </div>
+            <button class="card-delete" onclick="deleteItem('ideas', ${index})">×</button>
+        </div>
+        `;
+    }).join('');
+}
+
+function renderAll() {
+    renderWishes();
+    renderPlans();
+    renderIdeas();
+    renderTogether();
+}
+
+// Добавление
+function addNewItem(type) {
+    const today = new Date().toLocaleDateString('ru-RU');
+    if (type === 'wishes') {
+        const input = document.getElementById('wish-input');
+        const meta = document.getElementById('wish-meta');
+        if (!input.value.trim()) return;
+        wishes.unshift({ text: input.value.trim(), extra: meta.value.trim(), author: userName, done: false, date: today });
+        input.value = ''; meta.value = '';
+    } else if (type === 'plans') {
+        const input = document.getElementById('plan-input');
+        const meta = document.getElementById('plan-meta');
+        if (!input.value.trim()) return;
+        plans.unshift({ text: input.value.trim(), extra: meta.value || 'Без даты', author: userName, done: false, date: today });
+        input.value = ''; meta.value = '';
+    } else if (type === 'ideas') {
+        const input = document.getElementById('idea-input');
+        const cat = document.getElementById('idea-category');
+        if (!input.value.trim()) return;
+        ideas.unshift({ text: input.value.trim(), extra: cat.value, author: userName, done: false, date: today });
+        input.value = '';
+    }
+    save();
+    renderAll();
+    tg.HapticFeedback?.impactOccurred('light');
+}
+
+window.toggleItem = function(type, index) {
+    const map = { wishes, plans, ideas };
+    map[type][index].done = !map[type][index].done;
+    save();
+    renderAll();
+    tg.HapticFeedback?.selectionChanged();
+};
+
+window.deleteItem = function(type, index) {
+    const map = { wishes, plans, ideas };
+    map[type].splice(index, 1);
+    save();
+    renderAll();
+    tg.HapticFeedback?.impactOccurred('medium');
+};
+
+// Случайная идея
+document.getElementById('random-idea-btn').addEventListener('click', () => {
+    const active = ideas.filter(i => !i.done);
+    if (!active.length) return tg.showAlert('Добавьте хотя бы одну невыполненную идею!');
+    const random = active[Math.floor(Math.random() * active.length)];
+    document.getElementById('random-result-text').textContent = random.text;
+    document.getElementById('random-result-cat').textContent = getCatName(random.extra);
+    document.getElementById('random-modal').classList.remove('hidden');
+    tg.HapticFeedback?.notificationOccurred('success');
+});
+
+document.getElementById('close-modal-btn').addEventListener('click', () => {
+    document.getElementById('random-modal').classList.add('hidden');
+});
+
+// Привязка кнопок
+document.getElementById('add-wish-btn').addEventListener('click', () => addNewItem('wishes'));
+document.getElementById('add-plan-btn').addEventListener('click', () => addNewItem('plans'));
+document.getElementById('add-idea-btn').addEventListener('click', () => addNewItem('ideas'));
+
+// Экспорт / Импорт
+document.getElementById('export-btn').addEventListener('click', () => {
+    const data = { wishes, plans, ideas, startDate, loveCount, streak };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'our_data.json'; a.click();
+});
+
+document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
+document.getElementById('import-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            if (data.wishes) wishes = data.wishes;
+            if (data.plans) plans = data.plans;
+            if (data.ideas) ideas = data.ideas;
+            if (data.startDate) startDate = data.startDate;
+            if (data.loveCount) loveCount = data.loveCount;
+            if (data.streak) streak = data.streak;
+            save(); renderAll();
+            document.getElementById('love-count').textContent = loveCount;
+            document.getElementById('streak-days').textContent = streak;
+            tg.showAlert('Данные успешно загружены!');
+        } catch (err) {
+            tg.showAlert('Ошибка при чтении файла');
+        }
+    };
+    reader.readAsText(file);
+});
+
+// Запуск
+updateStreak();
+renderAll();
+document.getElementById('love-count').textContent = loveCount;
