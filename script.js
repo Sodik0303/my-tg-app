@@ -5,6 +5,10 @@ tg.expand();
 const user = tg.initDataUnsafe?.user;
 const userName = user?.first_name || 'Я';
 
+// ID комнаты (если передан в ссылке, используется он, иначе дефолтный)
+const roomId = tg.initDataUnsafe?.start_param || 'our_couple_room_777';
+const cloud = tg.CloudStorage;
+
 // Приветствие
 function getGreeting() {
     const h = new Date().getHours();
@@ -13,13 +17,13 @@ function getGreeting() {
 }
 document.getElementById('greeting').textContent = getGreeting();
 
-// Хранилище
-let wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
-let plans = JSON.parse(localStorage.getItem('plans') || '[]');
-let ideas = JSON.parse(localStorage.getItem('ideas') || '[]');
-let startDate = localStorage.getItem('startDate') || '';
-let loveCount = parseInt(localStorage.getItem('loveCount') || '0', 10);
-let streak = parseInt(localStorage.getItem('streak') || '0', 10);
+// Базовые переменные
+let wishes = [];
+let plans = [];
+let ideas = [];
+let startDate = '';
+let loveCount = 0;
+let streak = 0;
 let lastVisit = localStorage.getItem('lastVisit') || '';
 
 const notes = [
@@ -33,15 +37,98 @@ const notes = [
     "Мне очень повезло, что именно ты — моя девушка."
 ];
 
+// ===== СИНХРОНИЗАЦИЯ И СОХРАНЕНИЕ =====
+
+// Сохранение в облако и локально
 function save() {
-    localStorage.setItem('wishes', JSON.stringify(wishes));
-    localStorage.setItem('plans', JSON.stringify(plans));
-    localStorage.setItem('ideas', JSON.stringify(ideas));
-    localStorage.setItem('startDate', startDate);
-    localStorage.setItem('loveCount', loveCount);
-    localStorage.setItem('streak', streak);
-    localStorage.setItem('lastVisit', lastVisit);
+    const data = { wishes, plans, ideas, startDate, loveCount, streak, lastVisit };
+    const json = JSON.stringify(data);
+    
+    // Мгновенно сохраняем в локальный кэш телефона
+    localStorage.setItem('appData', json);
+    
+    // Отправляем в облако Telegram
+    if (cloud) {
+        cloud.setItem(roomId, json, (err) => {
+            if (err) console.error('Ошибка сохранения в облако:', err);
+        });
+    }
 }
+
+// Загрузка при старте
+function loadInitialData(callback) {
+    if (!cloud) {
+        // Фоллбэк, если CloudStorage недоступен (например, открыто просто в браузере)
+        const local = localStorage.getItem('appData');
+        if (local) parseData(local);
+        if (callback) callback();
+        return;
+    }
+
+    cloud.getItem(roomId, (err, value) => {
+        if (!err && value) {
+            parseData(value);
+        } else {
+            // Если в облаке пусто, берем локальный кэш
+            const local = localStorage.getItem('appData');
+            if (local) parseData(local);
+        }
+        if (callback) callback();
+    });
+}
+
+// Парсинг полученных данных
+function parseData(json) {
+    try {
+        const data = JSON.parse(json);
+        wishes = data.wishes || [];
+        plans = data.plans || [];
+        ideas = data.ideas || [];
+        startDate = data.startDate || '';
+        loveCount = data.loveCount || 0;
+        streak = data.streak || 0;
+        if (data.lastVisit) lastVisit = data.lastVisit;
+        
+        document.getElementById('love-count').textContent = loveCount;
+        document.getElementById('streak-days').textContent = streak;
+    } catch (e) {
+        console.error('Ошибка парсинга данных', e);
+    }
+}
+
+// Фоновая синхронизация (проверка обновлений партнера)
+let isSyncing = false;
+function syncBackground() {
+    if (isSyncing || !cloud) return;
+    isSyncing = true;
+    
+    cloud.getItem(roomId, (err, value) => {
+        isSyncing = false;
+        if (!err && value) {
+            const currentLocal = localStorage.getItem('appData');
+            // Если данные в облаке отличаются от наших — обновляем интерфейс
+            if (value !== currentLocal) {
+                try {
+                    const data = JSON.parse(value);
+                    wishes = data.wishes || [];
+                    plans = data.plans || [];
+                    ideas = data.ideas || [];
+                    startDate = data.startDate || '';
+                    loveCount = data.loveCount || 0;
+                    streak = data.streak || 0;
+                    
+                    localStorage.setItem('appData', value);
+                    
+                    document.getElementById('love-count').textContent = loveCount;
+                    document.getElementById('streak-days').textContent = streak;
+                    renderAll();
+                } catch (e) {}
+            }
+        }
+    });
+}
+
+// ===== ОТРИСОВКА И ЛОГИКА =====
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -81,7 +168,7 @@ tabs.forEach(tab => {
         tab.classList.add('active');
         activeTabId = tab.dataset.tab;
         document.getElementById(activeTabId).classList.add('active');
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Плавный скролл наверх
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         tg.HapticFeedback?.selectionChanged();
     });
 });
@@ -147,7 +234,7 @@ document.getElementById('close-note-btn').addEventListener('click', () => {
     document.getElementById('note-modal').classList.add('hidden');
 });
 
-// Отрисовка
+// Рендер Вишлиста
 function renderWishes() {
     const list = document.getElementById('wishes-list');
     const done = wishes.filter(i => i.done).length;
@@ -174,6 +261,7 @@ function renderWishes() {
     `).join('');
 }
 
+// Рендер Планов
 function renderPlans() {
     const list = document.getElementById('plans-list');
     const done = plans.filter(i => i.done).length;
@@ -213,6 +301,7 @@ function renderPlans() {
     }).join('');
 }
 
+// Рендер Идей
 function renderIdeas() {
     const list = document.getElementById('ideas-list');
     document.getElementById('ideas-stats').textContent = `Идей: ${ideas.length}`;
@@ -342,7 +431,12 @@ document.getElementById('import-file').addEventListener('change', (e) => {
     reader.readAsText(file);
 });
 
-// Запуск
-updateStreak();
-renderAll();
-document.getElementById('love-count').textContent = loveCount;
+// ===== ЗАПУСК ПРИЛОЖЕНИЯ =====
+loadInitialData(() => {
+    updateStreak();
+    renderAll();
+    document.getElementById('love-count').textContent = loveCount;
+    
+    // Запускаем фоновую проверку обновлений каждые 5 секунд
+    setInterval(syncBackground, 5000);
+});
