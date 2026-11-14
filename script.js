@@ -5,9 +5,11 @@ tg.expand();
 const user = tg.initDataUnsafe?.user;
 const userName = user?.first_name || 'Я';
 
-// ID комнаты (если передан в ссылке, используется он, иначе дефолтный)
-const roomId = tg.initDataUnsafe?.start_param || 'our_couple_room_777';
-const cloud = tg.CloudStorage;
+// ID комнаты
+const roomId = 'our_super_secret_room_2026'; 
+
+// ПРОВЕРКА ПОДДЕРЖКИ ОБЛАКА
+const isCloudSupported = tg.isVersionAtLeast('6.9') && tg.CloudStorage;
 
 // Приветствие
 function getGreeting() {
@@ -39,37 +41,36 @@ const notes = [
 
 // ===== СИНХРОНИЗАЦИЯ И СОХРАНЕНИЕ =====
 
-// Сохранение в облако и локально
 function save() {
     const data = { wishes, plans, ideas, startDate, loveCount, streak, lastVisit };
     const json = JSON.stringify(data);
     
-    // Мгновенно сохраняем в локальный кэш телефона
+    // Всегда сохраняем локально
     localStorage.setItem('appData', json);
     
-    // Отправляем в облако Telegram
-    if (cloud) {
-        cloud.setItem(roomId, json, (err) => {
+    // Если облако поддерживается, сохраняем и туда
+    if (isCloudSupported) {
+        tg.CloudStorage.setItem(roomId, json, (err) => {
             if (err) console.error('Ошибка сохранения в облако:', err);
         });
     }
 }
 
-// Загрузка при старте
 function loadInitialData(callback) {
-    if (!cloud) {
-        // Фоллбэк, если CloudStorage недоступен (например, открыто просто в браузере)
+    // Если облако не поддерживается — берем только локальные данные
+    if (!isCloudSupported) {
+        console.warn('CloudStorage не поддерживается. Работаем локально.');
         const local = localStorage.getItem('appData');
         if (local) parseData(local);
         if (callback) callback();
         return;
     }
 
-    cloud.getItem(roomId, (err, value) => {
+    // Если поддерживается — берем из облака
+    tg.CloudStorage.getItem(roomId, (err, value) => {
         if (!err && value) {
             parseData(value);
         } else {
-            // Если в облаке пусто, берем локальный кэш
             const local = localStorage.getItem('appData');
             if (local) parseData(local);
         }
@@ -77,7 +78,6 @@ function loadInitialData(callback) {
     });
 }
 
-// Парсинг полученных данных
 function parseData(json) {
     try {
         const data = JSON.parse(json);
@@ -96,17 +96,16 @@ function parseData(json) {
     }
 }
 
-// Фоновая синхронизация (проверка обновлений партнера)
+// Фоновая синхронизация
 let isSyncing = false;
 function syncBackground() {
-    if (isSyncing || !cloud) return;
+    if (isSyncing || !isCloudSupported) return;
     isSyncing = true;
     
-    cloud.getItem(roomId, (err, value) => {
+    tg.CloudStorage.getItem(roomId, (err, value) => {
         isSyncing = false;
         if (!err && value) {
             const currentLocal = localStorage.getItem('appData');
-            // Если данные в облаке отличаются от наших — обновляем интерфейс
             if (value !== currentLocal) {
                 try {
                     const data = JSON.parse(value);
@@ -118,7 +117,6 @@ function syncBackground() {
                     streak = data.streak || 0;
                     
                     localStorage.setItem('appData', value);
-                    
                     document.getElementById('love-count').textContent = loveCount;
                     document.getElementById('streak-days').textContent = streak;
                     renderAll();
@@ -142,7 +140,6 @@ function getCatName(cat) {
     return '✨ Свидание';
 }
 
-// Логика стрика
 function updateStreak() {
     const today = new Date().toDateString();
     if (lastVisit !== today) {
@@ -156,7 +153,6 @@ function updateStreak() {
     document.getElementById('streak-days').textContent = streak;
 }
 
-// Вкладки
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 let activeTabId = 'wishes-tab';
@@ -173,7 +169,6 @@ tabs.forEach(tab => {
     });
 });
 
-// Дни вместе
 function renderTogether() {
     const daysEl = document.getElementById('days-together');
     if (!startDate) { daysEl.textContent = '—'; return; }
@@ -198,7 +193,6 @@ document.getElementById('cancel-date-btn').addEventListener('click', () => {
     document.getElementById('date-modal').classList.add('hidden');
 });
 
-// Любовь
 const loveBtn = document.getElementById('love-btn');
 document.getElementById('love-count').textContent = loveCount;
 
@@ -222,7 +216,6 @@ loveBtn.addEventListener('click', () => {
     }
 });
 
-// Записки
 document.getElementById('note-btn').addEventListener('click', () => {
     const randomNote = notes[Math.floor(Math.random() * notes.length)];
     document.getElementById('note-text').textContent = `«${randomNote}»`;
@@ -234,7 +227,6 @@ document.getElementById('close-note-btn').addEventListener('click', () => {
     document.getElementById('note-modal').classList.add('hidden');
 });
 
-// Рендер Вишлиста
 function renderWishes() {
     const list = document.getElementById('wishes-list');
     const done = wishes.filter(i => i.done).length;
@@ -261,7 +253,6 @@ function renderWishes() {
     `).join('');
 }
 
-// Рендер Планов
 function renderPlans() {
     const list = document.getElementById('plans-list');
     const done = plans.filter(i => i.done).length;
@@ -301,7 +292,6 @@ function renderPlans() {
     }).join('');
 }
 
-// Рендер Идей
 function renderIdeas() {
     const list = document.getElementById('ideas-list');
     document.getElementById('ideas-stats').textContent = `Идей: ${ideas.length}`;
@@ -334,7 +324,6 @@ function renderAll() {
     renderTogether();
 }
 
-// Добавление
 function addNewItem(type) {
     const today = new Date().toLocaleDateString('ru-RU');
     if (type === 'wishes') {
@@ -377,7 +366,6 @@ window.deleteItem = function(type, index) {
     tg.HapticFeedback?.impactOccurred('medium');
 };
 
-// Случайная идея
 document.getElementById('random-idea-btn').addEventListener('click', () => {
     const active = ideas.filter(i => !i.done);
     if (!active.length) return tg.showAlert('Добавьте хотя бы одну невыполненную идею!');
@@ -392,12 +380,10 @@ document.getElementById('close-modal-btn').addEventListener('click', () => {
     document.getElementById('random-modal').classList.add('hidden');
 });
 
-// Привязка кнопок
 document.getElementById('add-wish-btn').addEventListener('click', () => addNewItem('wishes'));
 document.getElementById('add-plan-btn').addEventListener('click', () => addNewItem('plans'));
 document.getElementById('add-idea-btn').addEventListener('click', () => addNewItem('ideas'));
 
-// Экспорт / Импорт
 document.getElementById('export-btn').addEventListener('click', () => {
     const data = { wishes, plans, ideas, startDate, loveCount, streak };
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
@@ -437,6 +423,13 @@ loadInitialData(() => {
     renderAll();
     document.getElementById('love-count').textContent = loveCount;
     
-    // Запускаем фоновую проверку обновлений каждые 5 секунд
-    setInterval(syncBackground, 5000);
+    // Синхронизация только если облако поддерживается
+    if (isCloudSupported) {
+        setInterval(syncBackground, 5000);
+    } else {
+        // Если облако не работает, выводим предупреждение (можно убрать)
+        setTimeout(() => {
+            tg.showAlert('Внимание! Вы открываете приложение в старой версии Telegram. Синхронизация между устройствами недоступна. Пожалуйста, обновите Telegram до последней версии.');
+        }, 1000);
+    }
 });
