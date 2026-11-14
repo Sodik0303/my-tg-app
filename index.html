@@ -18,9 +18,9 @@
         <header class="header">
             <div class="header-top">
                 <span class="badge">Для двоих ❤️</span>
-                <button id="share-btn" class="icon-btn" title="Отправить в чат">📤</button>
+                <button id="share-btn" class="icon-btn">📤</button>
             </div>
-            <h1 class="header-title" id="greeting">Наш уголок 💕</h1>
+            <h1 class="header-title" id="greeting">Наш уголок</h1>
             <p class="header-subtitle">Общие желания, планы и идеи</p>
 
             <!-- Блок статистики -->
@@ -44,7 +44,7 @@
                 <span>Я тебя люблю</span>
                 <span class="love-count" id="love-count">0</span>
             </button>
-            <button id="note-btn" class="note-btn" title="Записка">💌</button>
+            <button id="note-btn" class="note-btn">💌</button>
         </div>
 
         <!-- Навигация -->
@@ -68,7 +68,7 @@
                     <input type="text" id="wish-input" placeholder="Что хочешь в подарок? 🎁">
                     <div class="add-row">
                         <input type="text" id="wish-meta" placeholder="Цена или ссылка">
-                        <button id="add-wish-btn" class="primary-btn">+</button>
+                        <button id="add-wish-btn" class="primary-btn">Добавить</button>
                     </div>
                 </div>
                 <div id="wishes-list" class="cards-list"></div>
@@ -86,7 +86,7 @@
                     <input type="text" id="plan-input" placeholder="Куда сходим? 💫">
                     <div class="add-row">
                         <input type="date" id="plan-meta" class="date-picker">
-                        <button id="add-plan-btn" class="primary-btn">+</button>
+                        <button id="add-plan-btn" class="primary-btn">Добавить</button>
                     </div>
                 </div>
                 <div id="plans-list" class="cards-list"></div>
@@ -107,7 +107,7 @@
                             <option value="food">🍕 Еда</option>
                             <option value="date">✨ Свидание</option>
                         </select>
-                        <button id="add-idea-btn" class="primary-btn">+</button>
+                        <button id="add-idea-btn" class="primary-btn">Добавить</button>
                     </div>
                 </div>
                 <div id="ideas-list" class="cards-list"></div>
@@ -121,7 +121,7 @@
         </footer>
     </div>
 
-    <!-- Модалка случайной идеи -->
+    <!-- Модалки -->
     <div id="random-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-icon">🎲</div>
@@ -132,7 +132,6 @@
         </div>
     </div>
 
-    <!-- Модалка Записки любви -->
     <div id="note-modal" class="modal hidden">
         <div class="modal-content note-content">
             <div class="modal-icon">💌</div>
@@ -142,7 +141,6 @@
         </div>
     </div>
 
-    <!-- Модалка даты -->
     <div id="date-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-icon">💞</div>
