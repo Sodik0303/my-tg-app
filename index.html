@@ -3,70 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Семейный бот</title>
-    <script src="https://telegram.org"></script>
+    <title>Наш уголок 💕</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app">
+        <!-- Фоновые "блёстки" -->
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
+
         <!-- Шапка -->
         <header class="header">
             <div class="header-top">
                 <span class="badge">Для двоих ❤️</span>
-                <button id="share-btn" class="icon-btn" title="Отправить список в чат">📤 В чат</button>
+                <button id="share-btn" class="icon-btn" title="Отправить список в чат">📤</button>
             </div>
             <h1 class="header-title" id="greeting">Наш уголок 💕</h1>
             <p class="header-subtitle">Общие желания, планы и идеи</p>
+
+            <!-- Дни вместе -->
+            <div class="together-card" id="together-card">
+                <div class="together-label">Мы вместе уже</div>
+                <div class="together-days"><span id="days-together">0</span> <span class="together-unit">дней</span></div>
+                <button class="together-edit" id="edit-together-btn">✏️</button>
+            </div>
         </header>
 
-        <!-- Навигация (3 вкладки) -->
+        <!-- Кнопка "Я тебя люблю" -->
+        <div class="love-bar">
+            <button id="love-btn" class="love-btn">
+                <span class="love-heart">❤️</span>
+                <span>Я тебя люблю</span>
+                <span class="love-count" id="love-count">0</span>
+            </button>
+        </div>
+
+        <!-- Навигация -->
         <nav class="tabs">
             <button class="tab active" data-tab="wishes-tab">🎁 Вишлист</button>
             <button class="tab" data-tab="plans-tab">📅 Планы</button>
             <button class="tab" data-tab="ideas-tab">🎬 Идеи</button>
         </nav>
 
-        <!-- Основной контент -->
+        <!-- Контент -->
         <main class="content">
-            <!-- Вкладка 1: Вишлист -->
+            <!-- Вишлист -->
             <section id="wishes-tab" class="tab-content active">
-                <div class="stats-bar" id="wishes-stats">Всего: 0</div>
+                <div class="stats-row">
+                    <span id="wishes-stats">0 из 0</span>
+                    <span class="progress-label" id="wishes-progress-label">0%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="wishes-progress"></div></div>
+
                 <div class="add-card-box">
-                    <input type="text" id="wish-input" placeholder="Что хочешь в подарок?">
+                    <input type="text" id="wish-input" placeholder="Что хочешь в подарок? 🎁">
                     <div class="add-row">
-                        <input type="text" id="wish-meta" placeholder="Цена или ссылка (необязательно)">
+                        <input type="text" id="wish-meta" placeholder="Цена или ссылка">
                         <button id="add-wish-btn" class="primary-btn">Добавить</button>
                     </div>
                 </div>
                 <div id="wishes-list" class="cards-list"></div>
             </section>
 
-            <!-- Вкладка 2: Планы -->
+            <!-- Планы -->
             <section id="plans-tab" class="tab-content">
-                <div class="stats-bar" id="plans-stats">Всего: 0</div>
+                <div class="stats-row">
+                    <span id="plans-stats">0 из 0</span>
+                    <span class="progress-label" id="plans-progress-label">0%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="plans-progress"></div></div>
+
                 <div class="add-card-box">
-                    <input type="text" id="plan-input" placeholder="Куда сходим или что сделаем?">
+                    <input type="text" id="plan-input" placeholder="Куда сходим? 💫">
                     <div class="add-row">
-                        <input type="text" id="plan-meta" placeholder="Когда? (например: в субботу)">
+                        <input type="text" id="plan-meta" placeholder="Когда?">
                         <button id="add-plan-btn" class="primary-btn">Добавить</button>
                     </div>
                 </div>
                 <div id="plans-list" class="cards-list"></div>
             </section>
 
-            <!-- Вкладка 3: Идеи и фильмы -->
+            <!-- Идеи -->
             <section id="ideas-tab" class="tab-content">
-                <div class="stats-bar">
+                <div class="stats-row">
                     <span id="ideas-stats">Идей: 0</span>
-                    <button id="random-idea-btn" class="random-btn">🎲 Выбрать случайно</button>
+                    <button id="random-idea-btn" class="random-btn">🎲 Случайно</button>
                 </div>
+
                 <div class="add-card-box">
-                    <input type="text" id="idea-input" placeholder="Фильм на вечер, игра или место...">
+                    <input type="text" id="idea-input" placeholder="Фильм, игра или место...">
                     <div class="add-row">
                         <select id="idea-category">
-                            <option value="🎬 Кино">🎬 Кино / Сериал</option>
-                            <option value="🍕 Еда">🍕 Поесть / Кафе</option>
-                            <option value="✨ Досуг">✨ Досуг / Свидание</option>
+                            <option value="🎬 Кино">🎬 Кино</option>
+                            <option value="🍕 Еда">🍕 Еда</option>
+                            <option value="✨ Досуг">✨ Досуг</option>
                         </select>
                         <button id="add-idea-btn" class="primary-btn">Добавить</button>
                     </div>
@@ -74,9 +105,16 @@
                 <div id="ideas-list" class="cards-list"></div>
             </section>
         </main>
+
+        <!-- Футер с экспортом -->
+        <footer class="footer">
+            <button class="ghost-btn" id="export-btn">💾 Сохранить</button>
+            <button class="ghost-btn" id="import-btn">📥 Загрузить</button>
+            <input type="file" id="import-file" accept=".json" hidden>
+        </footer>
     </div>
 
-    <!-- Модальное окно для случайной идеи -->
+    <!-- Модалка случайной идеи -->
     <div id="random-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-icon">🎲</div>
@@ -84,6 +122,17 @@
             <p id="random-result-text" class="random-result"></p>
             <span id="random-result-cat" class="random-cat"></span>
             <button id="close-modal-btn" class="primary-btn full-width">Отлично!</button>
+        </div>
+    </div>
+
+    <!-- Модалка даты -->
+    <div id="date-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-icon">💞</div>
+            <h3>Когда мы начали встречаться?</h3>
+            <input type="date" id="start-date-input" class="date-input">
+            <button id="save-date-btn" class="primary-btn full-width">Сохранить</button>
+            <button id="cancel-date-btn" class="ghost-btn full-width mt-8">Отмена</button>
         </div>
     </div>
 
