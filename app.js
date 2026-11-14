@@ -1,50 +1,73 @@
+// ===== Инициализация =====
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
+const userName = tg.initDataUnsafe?.user?.first_name || 'Я';
 
-const user = tg.initDataUnsafe?.user;
-const userName = user?.first_name || 'Я';
-
-// Приветствие по времени суток
+// Приветствие
 function getGreeting() {
     const h = new Date().getHours();
-    let word = 'Привет';
-    if (h >= 5 && h < 12) word = 'Доброе утро';
-    else if (h >= 12 && h < 18) word = 'Добрый день';
-    else if (h >= 18 && h < 23) word = 'Добрый вечер';
-    else word = 'Доброй ночи';
-    return user?.first_name ? `${word}, ${user.first_name}! 💕` : `${word}! 💕`;
+    let word = h >= 5 && h < 12 ? 'Доброе утро' : h >= 12 && h < 18 ? 'Добрый день' : h >= 18 && h < 23 ? 'Добрый вечер' : 'Доброй ночи';
+    return userName !== 'Я' ? `${word}, ${userName}! 💕` : `${word}! 💕`;
 }
 document.getElementById('greeting').textContent = getGreeting();
 
-// ===== Хранилище =====
+// Хранилище
 let wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
 let plans = JSON.parse(localStorage.getItem('plans') || '[]');
 let ideas = JSON.parse(localStorage.getItem('ideas') || '[]');
 let startDate = localStorage.getItem('startDate') || '';
 let loveCount = parseInt(localStorage.getItem('loveCount') || '0', 10);
+let streak = parseInt(localStorage.getItem('streak') || '0', 10);
+let lastVisit = localStorage.getItem('lastVisit') || '';
 
+// Записки
+const notes = [
+    "Ты делаешь этот мир намного лучше, просто находясь в нём.",
+    "Я обожаю, как ты улыбаешься, когда думаешь, что я не вижу.",
+    "С тобой даже скучные дела становятся приключением.",
+    "Ты — мой самый любимый человек на планете.",
+    "Спасибо, что ты рядом. Я самый счастливый.",
+    "Я скучаю по тебе, даже если не видел всего час.",
+    "Ты самая красивая, когда сонная и лохматая утром.",
+    "Мне очень повезло, что именно ты — моя девушка."
+];
+
+// ===== Логика стрика =====
+function updateStreak() {
+    const today = new Date().toDateString();
+    if (lastVisit !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (lastVisit === yesterday.toDateString()) {
+            streak++; // Заходили вчера
+        } else if (lastVisit !== '') {
+            streak = 1; // Пропустили день или зашли впервые за долгое время
+        } else {
+            streak = 1; // Первый визит
+        }
+        lastVisit = today;
+        save();
+    }
+    document.getElementById('streak-days').textContent = streak;
+}
+
+// ===== Сохранение =====
 function save() {
     localStorage.setItem('wishes', JSON.stringify(wishes));
     localStorage.setItem('plans', JSON.stringify(plans));
     localStorage.setItem('ideas', JSON.stringify(ideas));
     localStorage.setItem('startDate', startDate);
     localStorage.setItem('loveCount', loveCount);
+    localStorage.setItem('streak', streak);
+    localStorage.setItem('lastVisit', lastVisit);
 }
 
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-function formatExtra(extra) {
-    if (!extra) return '';
-    const safe = escapeHtml(extra);
-    if (safe.startsWith('http://') || safe.startsWith('https://')) {
-        return `<div class="card-extra"><a href="${safe}" target="_blank">🔗 Открыть ссылку</a></div>`;
-    }
-    return `<div class="card-extra">📌 ${safe}</div>`;
 }
 
 // ===== Вкладки =====
@@ -66,56 +89,64 @@ tabs.forEach(tab => {
 // ===== Дни вместе =====
 function renderTogether() {
     const daysEl = document.getElementById('days-together');
-    if (!startDate) {
-        daysEl.textContent = '—';
-        return;
-    }
-    const start = new Date(startDate);
-    const now = new Date();
-    const days = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+    if (!startDate) { daysEl.textContent = '—'; return; }
+    const days = Math.floor((new Date() - new Date(startDate)) / (1000 * 60 * 60 * 24));
     daysEl.textContent = days >= 0 ? days : 0;
 }
 
-document.getElementById('edit-together-btn').addEventListener('click', () => {
+document.getElementById('edit-together-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
     document.getElementById('start-date-input').value = startDate || '';
     document.getElementById('date-modal').classList.remove('hidden');
 });
 document.getElementById('save-date-btn').addEventListener('click', () => {
     startDate = document.getElementById('start-date-input').value;
-    save();
-    renderTogether();
+    save(); renderTogether();
     document.getElementById('date-modal').classList.add('hidden');
     tg.HapticFeedback?.notificationOccurred('success');
 });
-document.getElementById('cancel-date-btn').addEventListener('click', () => {
-    document.getElementById('date-modal').classList.add('hidden');
-});
+document.getElementById('cancel-date-btn').addEventListener('click', () => document.getElementById('date-modal').classList.add('hidden'));
 
-// ===== Кнопка "люблю" =====
+// ===== Кнопка Любви =====
 const loveBtn = document.getElementById('love-btn');
-const loveCountEl = document.getElementById('love-count');
-loveCountEl.textContent = loveCount;
+document.getElementById('love-count').textContent = loveCount;
 
-loveBtn.addEventListener('click', (e) => {
+loveBtn.addEventListener('click', () => {
     loveCount++;
-    loveCountEl.textContent = loveCount;
+    document.getElementById('love-count').textContent = loveCount;
     save();
     tg.HapticFeedback?.impactOccurred('medium');
 
-    // Сердечки
     const rect = loveBtn.getBoundingClientRect();
-    for (let i = 0; i < 4; i++) {
-        const heart = document.createElement('div');
-        heart.className = 'floating-heart';
-        heart.textContent = ['❤️', '💖', '💕', '💗'][Math.floor(Math.random() * 4)];
-        heart.style.left = (rect.left + Math.random() * rect.width) + 'px';
-        heart.style.top = (rect.top - 10) + 'px';
-        document.body.appendChild(heart);
-        setTimeout(() => heart.remove(), 1300);
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            const heart = document.createElement('div');
+            heart.className = 'floating-heart';
+            heart.textContent = ['❤️', '💖', '💕', '💗', '✨'][Math.floor(Math.random() * 5)];
+            heart.style.left = (rect.left + Math.random() * rect.width) + 'px';
+            heart.style.top = (rect.top - 10) + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 1300);
+        }, i * 100);
     }
 });
 
-// ===== Отрисовка =====
+// ===== Записки =====
+document.getElementById('note-btn').addEventListener('click', () => {
+    const randomNote = notes[Math.floor(Math.random() * notes.length)];
+    document.getElementById('note-text').textContent = `«${randomNote}»`;
+    document.getElementById('note-modal').classList.remove('hidden');
+    tg.HapticFeedback?.notificationOccurred('success');
+});
+document.getElementById('close-note-btn').addEventListener('click', () => document.getElementById('note-modal').classList.add('hidden'));
+
+// ===== Отрисовка карточек =====
+function getCatName(cat) {
+    if (cat === 'movie') return '🎬 Кино';
+    if (cat === 'food') return '🍕 Еда';
+    return '✨ Свидание';
+}
+
 function renderWishes() {
     const list = document.getElementById('wishes-list');
     const done = wishes.filter(i => i.done).length;
@@ -124,17 +155,15 @@ function renderWishes() {
     document.getElementById('wishes-progress').style.width = pct + '%';
     document.getElementById('wishes-progress-label').textContent = pct + '%';
 
-    if (wishes.length === 0) {
-        list.innerHTML = `<div class="empty"><div class="empty-icon">🎁</div><div>Вишлист пустой. Добавь первое желание!</div></div>`;
-        return;
-    }
+    if (!wishes.length) return list.innerHTML = `<div class="empty"><div class="empty-icon">🎁</div><div>Вишлист пустой.</div></div>`;
+    
     list.innerHTML = wishes.map((item, index) => `
         <div class="card ${item.done ? 'done' : ''}">
             <button class="card-check" onclick="toggleItem('wishes', ${index})">${item.done ? '✓' : ''}</button>
             <div class="card-body">
                 <div class="card-text">${escapeHtml(item.text)}</div>
-                ${formatExtra(item.extra)}
-                <div class="card-meta">${escapeHtml(item.author || 'Я')} • ${item.date}</div>
+                ${item.extra ? `<div class="card-extra">${escapeHtml(item.extra)}</div>` : ''}
+                <div class="card-meta">${escapeHtml(item.author)} • ${item.date}</div>
             </div>
             <button class="card-delete" onclick="deleteItem('wishes', ${index})">×</button>
         </div>
@@ -149,95 +178,22 @@ function renderPlans() {
     document.getElementById('plans-progress').style.width = pct + '%';
     document.getElementById('plans-progress-label').textContent = pct + '%';
 
-    if (plans.length === 0) {
-        list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div>Планов пока нет. Куда сходим?</div></div>`;
-        return;
-    }
-    list.innerHTML = plans.map((item, index) => `
+    if (!plans.length) return list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div>Планов пока нет.</div></div>`;
+    
+    list.innerHTML = plans.map((item, index) => {
+        let timerHtml = '';
+        // Логика таймера
+        if (item.extra && item.extra !== 'Без даты') {
+            const diff = new Date(item.extra) - new Date().setHours(0,0,0,0);
+            const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            if (!item.done) {
+                if (daysLeft === 0) timerHtml = `<div class="timer-badge">🔥 Это сегодня!</div>`;
+                else if (daysLeft === 1) timerHtml = `<div class="timer-badge">⏳ Завтра</div>`;
+                else if (daysLeft > 1) timerHtml = `<div class="timer-badge">⏳ Через ${daysLeft} дн.</div>`;
+            }
+        }
+        return `
         <div class="card ${item.done ? 'done' : ''}">
             <button class="card-check" onclick="toggleItem('plans', ${index})">${item.done ? '✓' : ''}</button>
             <div class="card-body">
-                <div class="card-text">${escapeHtml(item.text)}</div>
-                ${formatExtra(item.extra)}
-                <div class="card-meta">${escapeHtml(item.author || 'Я')} • ${item.date}</div>
-            </div>
-            <button class="card-delete" onclick="deleteItem('plans', ${index})">×</button>
-        </div>
-    `).join('');
-}
-
-function renderIdeas() {
-    const list = document.getElementById('ideas-list');
-    document.getElementById('ideas-stats').textContent = `Идей: ${ideas.length}`;
-
-    if (ideas.length === 0) {
-        list.innerHTML = `<div class="empty"><div class="empty-icon">🎬</div><div>Добавь фильм на вечер или идею для свидания</div></div>`;
-        return;
-    }
-    list.innerHTML = ideas.map((item, index) => `
-        <div class="card ${item.done ? 'done' : ''}">
-            <button class="card-check" onclick="toggleItem('ideas', ${index})">${item.done ? '✓' : ''}</button>
-            <div class="card-body">
-                <div class="card-text">${escapeHtml(item.text)}</div>
-                <div class="card-extra">${escapeHtml(item.extra)}</div>
-                <div class="card-meta">${escapeHtml(item.author || 'Я')} • ${item.date}</div>
-            </div>
-            <button class="card-delete" onclick="deleteItem('ideas', ${index})">×</button>
-        </div>
-    `).join('');
-}
-
-function renderAll() {
-    renderWishes();
-    renderPlans();
-    renderIdeas();
-    renderTogether();
-}
-
-// ===== Добавление =====
-function addNewItem(type) {
-    const today = new Date().toLocaleDateString('ru-RU');
-    if (type === 'wishes') {
-        const input = document.getElementById('wish-input');
-        const meta = document.getElementById('wish-meta');
-        if (!input.value.trim()) return;
-        wishes.unshift({ text: input.value.trim(), extra: meta.value.trim(), author: userName, done: false, date: today });
-        input.value = ''; meta.value = '';
-    } else if (type === 'plans') {
-        const input = document.getElementById('plan-input');
-        const meta = document.getElementById('plan-meta');
-        if (!input.value.trim()) return;
-        plans.unshift({ text: input.value.trim(), extra: meta.value.trim(), author: userName, done: false, date: today });
-        input.value = ''; meta.value = '';
-    } else if (type === 'ideas') {
-        const input = document.getElementById('idea-input');
-        const cat = document.getElementById('idea-category');
-        if (!input.value.trim()) return;
-        ideas.unshift({ text: input.value.trim(), extra: cat.value, author: userName, done: false, date: today });
-        input.value = '';
-    }
-    save();
-    renderAll();
-    tg.HapticFeedback?.impactOccurred('light');
-}
-
-// ===== Переключение / удаление =====
-window.toggleItem = function(type, index) {
-    const map = { wishes, plans, ideas };
-    map[type][index].done = !map[type][index].done;
-    save();
-    renderAll();
-    tg.HapticFeedback?.selectionChanged();
-};
-
-window.deleteItem = function(type, index) {
-    const map = { wishes, plans, ideas };
-    map[type].splice(index, 1);
-    save();
-    renderAll();
-    tg.HapticFeedback?.impactOccurred('medium');
-};
-
-// ===== Случайная идея =====
-document.getElementById('random-idea-btn').addEventListener('click', () => {
-    const active = ideas.filter
+                <div class="card-text">${escapeHtml(item.text)}</div
